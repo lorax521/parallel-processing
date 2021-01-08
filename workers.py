@@ -7,7 +7,13 @@ from random import randint
 
 
 class Workers:
-    def __init__(self, iterables, asyncronous=True):
+    """Intializes a class of workers for parallel processing or thread pooling \n
+    Keyword Arguments:
+        func: method -- any method that takes a list as it's single argument
+        iterables: list -- a list of arguments to be mapped to func
+        asyncronous: Boolean -- when True runs the operation in parallel; when False runs the operation in thread pool
+    """
+    def __init__(self, func, iterables, asyncronous=True):
         t0 = time()
         if len(sys.argv) >= 2:
             cpus = int(sys.argv[2])
@@ -15,7 +21,6 @@ class Workers:
             cpus = os.cpu_count()
         workloadInterval = round(len(iterables) / cpus)
         location = 0
-        # TODO select the multiprocessing method
         workloads = []
         if asyncronous:
             with Pool() as executor: # async - fastest on large datasets
@@ -26,7 +31,7 @@ class Workers:
                     else:
                         workload = iterables[location:]
                     workloads.append(workload)
-                executor.map(work, workloads)
+                executor.map(func, workloads)
         else:
             with ThreadPoolExecutor() as executor: # sequential - fastest on small datasets
                 for idx in range(cpus):
@@ -36,21 +41,22 @@ class Workers:
                     else:
                         workload = iterables[location:]
                     workloads.append(workload)
-                executor.map(work, workloads)
+                executor.map(func, workloads)
         print('Total elapsed time: ' + str(time() - t0))
 
 
 def work(iterables):
-    # do something
+    """do something"""
     for iterable in iterables:
         try:
             sum(iterable)
         except:
             iterable + 1
 
-def baseline(iterables):
+def baseline(func, iterables):
+    """Runs work without parallel processing or thread pooling to get a baseline execution speed"""
     t0 = time()
-    work(iterables)
+    func(iterables)
     print('Baseline time: ' + str(time() - t0))
 
 
@@ -59,12 +65,12 @@ if __name__=='__main__':
     iterables = [randint(0, 1000) for x in range(0, sampleDatasetSize)] # example with one argument
     # iterables = [(randint(0, 1000), randint(0, 1000)) for x in range(0, sampleDatasetSize)] # example with two arguments; use Pool.starmap
     if len(sys.argv) > 1 and sys.argv[1] == 'baseline':
-        baseline(iterables)
+        baseline(work, iterables)
     else:
         if sys.argv[1] == 'sync':
-            Workers(iterables, asyncronous=False)
+            Workers(work, iterables, asyncronous=False)
         elif sys.argv[1] == 'async':
-            Workers(iterables, asyncronous=True)
+            Workers(work, iterables, asyncronous=True)
         else:
             scriptname = os.path.basename(__file__)
             print("""
